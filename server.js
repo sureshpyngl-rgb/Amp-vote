@@ -5,13 +5,21 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 
 const app = express();
-app.use(cors());
+// Add this BEFORE your routes
+const corsOptions = {
+  origin: '*', // AMP allows requests from any origin
+  methods: ['GET','POST'],
+  allowedHeaders: ['Content-Type']
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 .then(() => console.log('✅ MongoDB connected'))
 .catch(err => console.error('❌ MongoDB error:', err));
+
+
 
 // Poll schema
 const pollSchema = new mongoose.Schema({
@@ -39,6 +47,7 @@ const Poll = mongoose.model('Poll', pollSchema);
     console.error("❌ Error creating initial poll:", err);
   }
 })();
+
 
 
 // Get current poll

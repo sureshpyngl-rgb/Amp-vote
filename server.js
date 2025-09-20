@@ -8,7 +8,7 @@ const app = express();
 // Add this BEFORE your routes
 const corsOptions = {
   origin: '*', // AMP allows requests from any origin
-  methods: ['GET','POST'],
+  methods: ['GET','POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type']
 };
 app.use(cors(corsOptions));

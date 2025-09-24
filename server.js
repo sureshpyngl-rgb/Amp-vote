@@ -1,32 +1,30 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const bodyParser = require('body-parser');
 
 const app = express();
-
-// ✅ General CORS (for testing in browser/Postman)
-const corsOptions = {
-  origin: '*',
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
-};
-app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
 // ✅ AMP-specific CORS middleware
 app.use((req, res, next) => {
-    // Check if the request is from an AMP client
-    const sourceOrigin = req.query.__amp_source_origin;
-    if (sourceOrigin) {
-        // Set the required AMP CORS headers
-        res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
-        res.setHeader('Access-Control-Expose-Headers', 'AMP-Access-Control-Allow-Source-Origin');
-        res.setHeader('AMP-Access-Control-Allow-Source-Origin', sourceOrigin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
-    next();
+  const sourceOrigin = req.query.__amp_source_origin;
+
+  if (sourceOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', 'https://mail.google.com');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Expose-Headers', 'AMP-Access-Control-Allow-Source-Origin');
+    res.setHeader('AMP-Access-Control-Allow-Source-Origin', sourceOrigin);
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, *');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200); // ✅ Important for Gmail
+  }
+
+  next();
 });
 
 // ✅ MongoDB connection
@@ -40,7 +38,6 @@ const pollSchema = new mongoose.Schema({
   options: [String],
   votes: [Number]
 });
-
 const Poll = mongoose.model('Poll', pollSchema);
 
 // ✅ Create initial poll if not exists

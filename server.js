@@ -17,14 +17,16 @@ app.use(bodyParser.json());
 
 // ✅ AMP-specific CORS middleware
 app.use((req, res, next) => {
-  const sourceOrigin = req.query.__amp_source_origin; // Gmail/AMP adds this
-  if (sourceOrigin) {
-    res.setHeader("Access-Control-Allow-Origin", "https://mail.google.com");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Expose-Headers", "AMP-Access-Control-Allow-Source-Origin");
-    res.setHeader("AMP-Access-Control-Allow-Source-Origin", sourceOrigin);
-  }
-  next();
+    // Check if the request is from an AMP client
+    const sourceOrigin = req.query.__amp_source_origin;
+    if (sourceOrigin) {
+        // Set the required AMP CORS headers
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+        res.setHeader('Access-Control-Expose-Headers', 'AMP-Access-Control-Allow-Source-Origin');
+        res.setHeader('AMP-Access-Control-Allow-Source-Origin', sourceOrigin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    next();
 });
 
 // ✅ MongoDB connection

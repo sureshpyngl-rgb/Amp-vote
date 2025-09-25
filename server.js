@@ -80,42 +80,45 @@ app.get('/api/polls/current', async (req, res) => {
     }
 });
 
-// ✅ Submit vote (The action-xhr target: https://api.pyngl.com/api/polls/vote)
+// ✅ Submit vote with safety checks and auto-poll creation
 app.post('/api/polls/vote', async (req, res) => {
     try {
-        const { optionId } = req.body;
-        
-        // Ensure data is received after fixing body parser
+        let { optionId } = req.body;
+
+        // Step 1: Fetch existing poll
+        let poll = await Poll.findOne({});
+
+        // Step 2: Auto-create poll if missing or corrupted
+        if (!poll || !Array.isArray(poll.options) || poll.options.length === 0) {
+            poll = await Poll.create({
+                question: "What's your favorite social media platform?",
+                options: ["Instagram", "Twitter (X)", "LinkedIn", "YouTube"],
+                votes: [0, 0, 0, 0]
+            });
+            console.log("✅ Poll auto-created or repaired");
+        }
+
+        // Step 3: Validate the optionId
         if (!optionId) {
-             return res.status(400).json({ success: false, message: 'Option must be selected (Did the body-parser fix work?).' });
-        }
-        
-        const poll = await Poll.findOne({});
-        if (!poll) return res.status(404).json({ success: false, message: 'Poll not found' });
-
-        // 🛑 CRITICAL FIX: Check if poll.options is a valid array before accessing its length
-        if (!Array.isArray(poll.options) || poll.options.length === 0) {
-            console.error("❌ Poll data corrupted: 'options' array is missing or empty.");
-            return res.status(500).json({ success: false, message: 'Poll configuration is invalid.' });
+            return res.status(400).json({ success: false, message: 'Option must be selected.' });
         }
 
-        // Logic to update the vote count
         const index = parseInt(optionId.replace('opt', '')) - 1;
-        
-        // This line is now safe due to the check above
-        if (index < 0 || index >= poll.options.length) { 
-            return res.status(400).json({ success: false, message: 'Invalid option' });
+
+        if (isNaN(index) || index < 0 || index >= poll.options.length) {
+            return res.status(400).json({ success: false, message: 'Invalid option selected.' });
         }
 
+        // Step 4: Increment vote and save
         poll.votes[index] += 1;
         await poll.save();
 
-        // AMP forms expect a JSON response for success
-        res.json({ success: true, message: 'Vote submitted!' }); 
+        // Step 5: Respond with JSON (required by AMP)
+        res.json({ success: true, message: 'Vote submitted!' });
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: 'Error submitting vote' });
+        console.error("❌ Vote submission error:", err);
+        res.status(500).json({ success: false, message: 'Internal server error.' });
     }
 });
 

@@ -83,20 +83,27 @@ app.get('/api/polls/current', async (req, res) => {
 // ✅ Submit vote (The action-xhr target: https://api.pyngl.com/api/polls/vote)
 app.post('/api/polls/vote', async (req, res) => {
     try {
-        // This destructuring will now work because req.body will be populated
-        const { optionId } = req.body; 
+        const { optionId } = req.body;
         
-        // Ensure optionId is present before proceeding
+        // Ensure data is received after fixing body parser
         if (!optionId) {
-             return res.status(400).json({ success: false, message: 'Option must be selected.' });
+             return res.status(400).json({ success: false, message: 'Option must be selected (Did the body-parser fix work?).' });
         }
         
         const poll = await Poll.findOne({});
         if (!poll) return res.status(404).json({ success: false, message: 'Poll not found' });
 
+        // 🛑 CRITICAL FIX: Check if poll.options is a valid array before accessing its length
+        if (!Array.isArray(poll.options) || poll.options.length === 0) {
+            console.error("❌ Poll data corrupted: 'options' array is missing or empty.");
+            return res.status(500).json({ success: false, message: 'Poll configuration is invalid.' });
+        }
+
         // Logic to update the vote count
         const index = parseInt(optionId.replace('opt', '')) - 1;
-        if (index < 0 || index >= poll.options.length) {
+        
+        // This line is now safe due to the check above
+        if (index < 0 || index >= poll.options.length) { 
             return res.status(400).json({ success: false, message: 'Invalid option' });
         }
 

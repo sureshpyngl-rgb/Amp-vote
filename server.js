@@ -1,12 +1,16 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
+// const bodyParser = require('body-parser'); // <-- We'll use express built-ins instead
 
 const app = express();
-app.use(bodyParser.json());
 
-// ✅ CORRECTED AMP-specific CORS middleware
+// 🛑 CRITICAL FIX: Add both body parsers for JSON and URL-encoded data
+// AMP form submissions from amp-selector are often URL-encoded.
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ✅ CORRECTED AMP-specific CORS middleware (This part is correct)
 app.use((req, res, next) => {
     const sourceOrigin = req.query.__amp_source_origin;
     const requestOrigin = req.headers.origin; // Get the dynamic Origin (Gmail or AMP Cache)
@@ -65,7 +69,7 @@ const Poll = mongoose.model('Poll', pollSchema);
     }
 })();
 
-// ✅ Get current poll (Example of a GET route, though not strictly required by the AMP email)
+// ✅ Get current poll 
 app.get('/api/polls/current', async (req, res) => {
     try {
         const poll = await Poll.findOne({});
@@ -79,7 +83,14 @@ app.get('/api/polls/current', async (req, res) => {
 // ✅ Submit vote (The action-xhr target: https://api.pyngl.com/api/polls/vote)
 app.post('/api/polls/vote', async (req, res) => {
     try {
-        const { optionId } = req.body;
+        // This destructuring will now work because req.body will be populated
+        const { optionId } = req.body; 
+        
+        // Ensure optionId is present before proceeding
+        if (!optionId) {
+             return res.status(400).json({ success: false, message: 'Option must be selected.' });
+        }
+        
         const poll = await Poll.findOne({});
         if (!poll) return res.status(404).json({ success: false, message: 'Poll not found' });
 
